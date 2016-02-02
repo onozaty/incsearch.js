@@ -1,7 +1,7 @@
 /*
 --------------------------------------------------------
 incsearch.js - Incremental Search
-Version 1.0.0 (Update 2006/09/18)
+Version 1.1.0 (Update 2006/11/02)
 
 - onozaty (http://www.enjoyxstudy.com)
 
@@ -429,9 +429,17 @@ Object.extend(Object.extend(IncSearch.ViewTable.prototype, IncSearch.ViewBase.pr
 IncSearch.ViewBookmark = Class.create();
 Object.extend(Object.extend(IncSearch.ViewBookmark.prototype, IncSearch.ViewTable.prototype), {
 
+  setOptions: function(options) {
+
+    (IncSearch.ViewTable.prototype.setOptions).apply(this, [options]);
+
+    if (options.tagBracket != undefined)
+      this.tagBracket = options.tagBracket;
+  },
+
   isMatch: function(post, patternList) {
 
-    var value = post.title + "\n" + post.info + "\n" + post.tags.join("\n") + "\n" + post.others.join("\n");
+    var value = post.title + "\n" + post.info + "\n" + this.tagsString(post.tags, '\n') + "\n" + post.others.join("\n");
 
     for (var i = 0; i < patternList.length; i++) {
       if (this.matchIndex(value, patternList[i]) == -1) {
@@ -462,7 +470,7 @@ Object.extend(Object.extend(IncSearch.ViewBookmark.prototype, IncSearch.ViewTabl
 
     // tags
     if (post.tags) {
-      text += this.createElement(post.tags.join(' '), patternList, 'td');
+      text += this.createElement(this.tagsString(post.tags), patternList, 'td');
     }
 
     // others
@@ -472,5 +480,14 @@ Object.extend(Object.extend(IncSearch.ViewBookmark.prototype, IncSearch.ViewTabl
     text += '</tr>';
 
     return text;
+  },
+
+  tagsString: function(tags, sep) {
+    sep = sep || ' ';
+    if (this.tagBracket && tags.length != 0) {
+      return '[' + tags.join(']' + sep + '[') + ']';
+    } else {
+      return tags.join(sep);
+    }
   }
 });
