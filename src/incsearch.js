@@ -1,7 +1,7 @@
 /*
 --------------------------------------------------------
 incsearch.js - Incremental Search
-Version 2.0 (Update 2007/06/20)
+Version 2.1 (Update 2008/01/17)
 
 - onozaty (http://www.enjoyxstudy.com)
 
@@ -75,6 +75,7 @@ IncSearch.ViewBase.prototype = {
     this.setOptions(arguments[3] || {});
 
     this.nowPage = 0;
+    this.nowRow = 0;
 
     // check loop start
     this.checkLoop();
@@ -94,6 +95,8 @@ IncSearch.ViewBase.prototype = {
   pagePrevName: 'prev',
   pageNextName: 'next',
   useHotkey: false,
+  focusRowClassName: 'focus',
+  moveRow: false,
 
   setOptions: function(options) {
 
@@ -130,8 +133,9 @@ IncSearch.ViewBase.prototype = {
     if (!this.initDispNon || input.length != 0) {
       if (this.searchBefore) this.searchBefore();
       this.search(input);
-      this.nowPage = 1;
       this.createViewArea(0, this.dispMax, input);
+      this.nowPage = 1;
+      if (this.moveRow) this.changeRow(1);
       if (this.pageLink) this.createPageLink(1, this.pageLink);
       if (this.searchAfter) this.searchAfter();
     }
@@ -145,9 +149,53 @@ IncSearch.ViewBase.prototype = {
     if (this.changePageBefore) this.changePageBefore(pageNo);
     this.createViewArea(start, this.dispMax, this.oldInput);
     this.nowPage = pageNo;
+    this.nowRow = 0;
+    if (this.moveRow) this.changeRow(1);
     if (this.pageLink) this.createPageLink(pageNo, this.pageLink);
     if (this.changePageAfter) this.changePageAfter(pageNo);
     return true;
+  },
+
+  changeRow: function(rowNo) {
+
+    if (this.getListIndex(this.nowPage, rowNo) >= this.matchList.length) {
+      return;
+    }
+
+    if (rowNo < 1) {
+      if (this.nowPage > 1) {
+        this.changePage(this.nowPage - 1);
+        this.changeRow(this.dispMax);
+      }
+      return;
+    }
+
+    if (rowNo > this.dispMax) {
+      if (this.nowPage < this.getPageCount()) {
+        this.changePage(this.nowPage + 1);
+      }
+      return;
+    }
+
+    var table = this.viewArea.getElementsByTagName('table')[0];
+
+    if (this.nowRow != 0 && table.rows[this.nowRow]) {
+      table.rows[this.nowRow].className = '';
+    }
+    var row = table.rows[rowNo];
+    row.className = this.focusRowClassName;
+
+    var margin = 0;
+    var topPos = (this.viewArea.offsetTop + row.offsetTop) - (this.viewArea.offsetTop + table.rows[1].offsetTop);
+    var bottomPos = (this.viewArea.offsetTop + row.offsetTop + row.offsetHeight) + 5;
+
+    if (topPos < document.documentElement.scrollTop) {
+      window.scrollTo(0, topPos);
+    } else if (bottomPos > document.documentElement.clientHeight + document.documentElement.scrollTop) {
+      window.scrollTo(0, bottomPos - document.documentElement.clientHeight);
+    }
+
+    this.nowRow = rowNo;
   },
 
   createPageLink: function(pageNo, pageLinkElm) {
@@ -207,24 +255,54 @@ IncSearch.ViewBase.prototype = {
     return pageCount;
   },
 
+  getListIndex: function(pageNo, rowNo) {
+    pageNo = pageNo || this.nowPage;
+    rowNo = rowNo || this.nowRow;
+    return ((pageNo - 1) * this.dispMax) + rowNo - 1;
+  },
+
   hotkey: function(event) {
     if (event.ctrlKey) {
-      if (event.keyCode == 39) { // key right
-        if (this.nowPage < this.getPageCount()) {
-          this.changePage(this.nowPage + 1);
-        }
-        IncSearch._stopEvent(event);
-      } else if (event.keyCode == 37) { // key reft
-        if (this.nowPage > 1) {
-          this.changePage(this.nowPage - 1);
-        }
-        IncSearch._stopEvent(event);
+      switch(event.keyCode) {
+        case 13:  // Enter
+        case 77:  // m (Enter Max OS X)
+          if (this.selectRowCallback) {
+            this.selectRowCallback(this.searchValues[this.matchList[this.getListIndex()]]);
+            IncSearch._stopEvent(event);
+          }
+          break;
+        case 37:  // Left
+          if (this.nowPage > 1) {
+            this.changePage(this.nowPage - 1);
+          }
+          IncSearch._stopEvent(event);
+          break;
+        case 38:  // Up
+          if (this.moveRow) {
+            this.changeRow(this.nowRow - 1);
+            IncSearch._stopEvent(event);
+          }
+          break;
+        case 39:  // Right
+          if (this.nowPage < this.getPageCount()) {
+            this.changePage(this.nowPage + 1);
+          }
+          IncSearch._stopEvent(event);
+          break;
+        case 40:  // Down
+          if (this.moveRow) {
+            this.changeRow(this.nowRow + 1);
+            IncSearch._stopEvent(event);
+          }
+          break;
+        default:
+          break;
       }
     }
   },
 
   createViewArea: function(start, count, patternList) {
-    var elementText = '';
+    var elementText = [];
 
     var end = this.matchList.length;
     if (count != 0 && end > (start + count)) {
@@ -232,13 +310,13 @@ IncSearch.ViewBase.prototype = {
     }
 
     for (var i = start; i < end; i++) {
-      elementText += this.createLineElement(this.matchList[i], patternList);
+      elementText.push(this.createLineElement(this.matchList[i], patternList));
     }
 
-    if (elementText != '') {
-      if (this.startElementText) elementText = this.startElementText + elementText;
-      if (this.endElementText) elementText += this.endElementText;
-      this.viewArea.innerHTML = elementText;
+    if (elementText.length > 0) {
+      if (this.startElementText) elementText.unshift(this.startElementText);
+      if (this.endElementText) elementText.push(this.endElementText);
+      this.viewArea.innerHTML = elementText.join('');
     }
   },
 
@@ -261,20 +339,20 @@ IncSearch.ViewBase.prototype = {
     return this.matchList.length;
   },
 
-  createElement: function(value, patternList, tagName) {
+  createElement: function(value, patternList, tagName, highlight) {
 
-    var elementHTML = '<' + tagName + '>';
-    elementHTML += this.createText(value, patternList);
-    elementHTML += '</' + tagName + '>';
-
-    return elementHTML;
+    return ['<', tagName, '>',
+            this.createText(value, patternList, highlight),
+            '</', tagName, '>'].join('');
   },
 
-  createText: function(value, patternList) {
+  createText: function(value, patternList, highlight) {
 
     var textList = [];
 
-    if (this.highlight) {
+    if (highlight == null) highlight = this.highlight;
+
+    if (highlight) {
 
       var first = this.getFirstMatch(value, patternList);
 
@@ -408,13 +486,13 @@ IncSearch.ViewTable.prototype.isMatch = function(valueArray, patternList) {
 
 IncSearch.ViewTable.prototype.createLineElement = function(index, patternList) {
 
-  var text = '<tr>';
+  var text = ['<tr>'];
   for (var i = 0, len = this.searchValues[index].length; i < len; i++) {
-    text += this.createElement(this.searchValues[index][i], patternList, 'td');
+    text.push(this.createElement(this.searchValues[index][i], patternList, 'td'));
   }
+  text.push('</tr>');
 
-  text += '</tr>';
-  return text;
+  return text.join('');
 };
 
 /*-- IncSearch.ViewBookmark -------------------------------*/
@@ -439,27 +517,27 @@ IncSearch.ViewBookmark.prototype.createLineElement = function(index, patternList
 
   var post = this.searchValues[index];
 
-  var text = '<tr><td>';
+  var text = ['<tr><td>'];
 
   // url, title
-  text += this.createTitleElement(post, patternList);
+  text.push(this.createTitleElement(post, patternList));
 
   // info
   if (post.info) {
-    text += this.createElement(post.info, patternList, 'p');
+    text.push(this.createElement(post.info, patternList, 'p'));
   }
-  text += '</td>';
+  text.push('</td>');
 
   // tags
   if (post.tags) {
-    text += this.createElement(this.tagsString(post.tags), patternList, 'td');
+    text.push(this.createElement(this.tagsString(post.tags), patternList, 'td'));
   }
 
   // others
-  text += this.createOthersElement(post, patternList);
-  text += '</tr>';
+  text.push(this.createOthersElement(post, patternList));
+  text.push('</tr>');
 
-  return text;
+  return text.join('');
 };
 
 IncSearch.ViewBookmark.prototype.tagsString = function(tags, sep) {
@@ -475,26 +553,33 @@ IncSearch.ViewBookmark.prototype.tagsString = function(tags, sep) {
 };
 
 IncSearch.ViewBookmark.prototype.createValue = function(post) {
-  return post.title + "\n" + post.info + "\n" + this.tagsString(post.tags, '\n') + "\n" + post.others.join("\n");
+  return [
+    post.title,
+    "\n",
+    post.info,
+    "\n",
+    this.tagsString(post.tags, '\n'),
+    "\n",
+    post.others.join("\n")].join('');
 };
 
 IncSearch.ViewBookmark.prototype.createTitleElement = function(post, patternList) {
-  var text = '<a href="' +  post.url + '"';
+  var text = ['<a href="', post.url, '"'];
   if (this.target) {
-    text += ' target="' + this.target + '" ';
+    text.push(' target="', this.target, '" ');
   }
-  text += '>';
-  text += this.createText(post.title, patternList);
-  text += '</a><br />';
+  text.push('>');
+  text.push(this.createText(post.title, patternList));
+  text.push('</a><br />');
 
-  return text;
+  return text.join('');
 };
 
 IncSearch.ViewBookmark.prototype.createOthersElement = function(post, patternList) {
-  var text = '';
+  var text = [];
   for (var i = 0, len = post.others.length; i < len; i++) {
-    text += this.createElement(post.others[i], patternList, 'td');
+    text.push(this.createElement(post.others[i], patternList, 'td'));
   }
 
-  return text;
+  return text.join('');
 };
