@@ -1,12 +1,11 @@
 /*
 --------------------------------------------------------
 incsearch.js - Incremental Search
-Version 2.1 (Update 2008/01/17)
+Version 2.2.0 (Update 2008/04/02)
 
-- onozaty (http://www.enjoyxstudy.com)
+Copyright (c) 2006-2008 onozaty (http://www.enjoyxstudy.com)
 
-Released under the Creative Commons License(Attribution 2.1 Japan):
- http://creativecommons.org/licenses/by/2.1/jp/
+Released under an MIT-style license.
 
 For details, see the web site:
  http://www.enjoyxstudy.com/javascript/incsearch
