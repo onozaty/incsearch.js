@@ -1,14 +1,12 @@
 /*
 --------------------------------------------------------
 incsearch.js - Incremental Search
-Version 1.2.0 (Update 2007/01/28)
+Version 2.0 (Update 2007/06/20)
 
 - onozaty (http://www.enjoyxstudy.com)
 
 Released under the Creative Commons License(Attribution 2.1 Japan):
  http://creativecommons.org/licenses/by/2.1/jp/
-
-depends on prototype.js(http://prototype.conio.net/)
 
 For details, see the web site:
  http://www.enjoyxstudy.com/javascript/incsearch
@@ -20,12 +18,55 @@ if (!IncSearch) {
   var IncSearch = {};
 }
 
+/*-- Utils --------------------------------------------*/
+IncSearch._copyProperties = function(dest, src) {
+  for (var property in src) {
+    dest[property] = src[property];
+  }
+  return dest;
+};
+
+IncSearch._copyProperties = function(dest, src) {
+  for (var property in src) {
+    dest[property] = src[property];
+  }
+  return dest;
+};
+
+IncSearch._getElement = function(element) {
+  return (typeof element == 'string') ? document.getElementById(element) : element;
+};
+
+IncSearch._addEvent = (window.addEventListener ?
+  function(element, type, func) {
+    element.addEventListener(type, func, false);
+  } :
+  function(element, type, func) {
+    element.attachEvent('on' + type, func);
+  });
+
+IncSearch._stopEvent = function(event) {
+  if (event.preventDefault) {
+    event.preventDefault();
+    event.stopPropagation();
+  } else {
+    event.returnValue = false;
+    event.cancelBubble = true;
+  }
+};
+
+IncSearch._getEventElement = function(event) {
+  return event.target || event.srcElement;
+};
+
 /*-- IncSearch.ViewBase -------------------------------*/
-IncSearch.ViewBase = Class.create();
+IncSearch.ViewBase = function() {
+  this.initialize.apply(this, arguments);
+};
 IncSearch.ViewBase.prototype = {
   initialize: function(input, viewArea, searchValues) {
-    this.input = $(input);
-    this.viewArea = $(viewArea);
+    this.input = IncSearch._getElement(input);
+    this.viewArea = IncSearch._getElement(viewArea);
     this.searchValues = searchValues;
 
     this.checkLoopTimer = null;
@@ -52,72 +93,15 @@ IncSearch.ViewBase.prototype = {
   escape: false,
   pagePrevName: 'prev',
   pageNextName: 'next',
+  useHotkey: false,
 
-  setBaseOptions: function(options) {
+  setOptions: function(options) {
 
-    if (options.interval != undefined)
-      this.interval = options.interval;
+    IncSearch._copyProperties(this, options);
 
-    if (options.delay != undefined)
-      this.delay = options.delay;
-
-    if (options.initDispNon != undefined)
-      this.initDispNon = options.initDispNon;
-
-    if (options.dispMax != undefined)
-      this.dispMax = options.dispMax;
-
-    if (options.ignoreCase != undefined)
-      this.ignoreCase = options.ignoreCase;
-
-    if (options.highlight != undefined)
-      this.highlight = options.highlight;
-
-    if (options.highClassNum != undefined)
-      this.highClassNum = options.highClassNum;
-
-    if (options.highClassName != undefined)
-      this.highClassName = options.highClassName;
-
-    if (options.delim != undefined)
-      this.delim = options.delim;
-
-    if (options.escape != undefined)
-      this.escape = options.escape;
-
-    if (options.startElementText != undefined)
-      this.startElementText = options.startElementText;
-
-    if (options.endElementText != undefined)
-      this.endElementText = options.endElementText;
-
-    if (options.searchBefore != undefined)
-      this.searchBefore = options.searchBefore;
-
-    if (options.searchAfter != undefined)
-      this.searchAfter = options.searchAfter;
-
-    if (options.pageLink != undefined)
-      this.pageLink = options.pageLink;
-
-    if (options.pagePrevName != undefined)
-      this.pagePrevName = options.pagePrevName;
-
-    if (options.pageNextName != undefined)
-      this.pageNextName = options.pageNextName;
-
-    if (options.changePageAfter != undefined)
-      this.changePageAfter = options.changePageAfter;
-
-    if (options.changePageAfter != undefined)
-      this.changePageAfter = options.changePageAfter;
-
-    if (options.hotkey != undefined) {
-      if (window.opera) {
-        Event._observeAndCache($(options.hotkey), 'keypress', this.hotkey.bindAsEventListener(this), false);
-      } else {
-        Event.observe($(options.hotkey), 'keypress', this.hotkey.bindAsEventListener(this), false);
-      }
+    if (this.useHotkey) {
+      var keyevent = (window.opera) ? 'keypress' : 'keydown';
+      IncSearch._addEvent(document, keyevent, this._bindEvent(this.hotkey));
     }
   },
 
@@ -129,16 +113,15 @@ IncSearch.ViewBase.prototype = {
         this.startSearch(input);
       } else {
         if (this.startSearchTimer) clearTimeout(this.startSearchTimer);
-        this.startSearchTimer = setTimeout(this.startSearch.bind(this, input), this.delay);
+        this.startSearchTimer = setTimeout(this._bind(this.startSearch, input), this.delay);
       }
     }
     if (this.checkLoopTimer) clearTimeout(this.checkLoopTimer);
-    this.checkLoopTimer = setTimeout(this.checkLoop.bind(this), this.interval);
+    this.checkLoopTimer = setTimeout(this._bind(this.checkLoop), this.interval);
   },
 
   isChange: function(input) {
-    return !this.oldInput ||
-       (input.join(this.delim || '') != this.oldInput.join(this.delim || ''));
+    return (!this.oldInput || (input.join(this.delim) != this.oldInput.join(this.delim)));
   },
 
   startSearch: function(input) {
@@ -169,7 +152,7 @@ IncSearch.ViewBase.prototype = {
 
   createPageLink: function(pageNo, pageLinkElm) {
 
-    pageLinkElm = $(pageLinkElm);
+    pageLinkElm = IncSearch._getElement(pageLinkElm);
 
     var pageCount = this.getPageCount();
 
@@ -191,31 +174,24 @@ IncSearch.ViewBase.prototype = {
     pageLinkElm.innerHTML = '';
 
     if (prev_page) {
-
-      var prev = document.createElement('a');
-      prev.setAttribute('href', 'javascript:void(0)');
-      var prev_text = document.createTextNode(this.pagePrevName);
-      prev.appendChild(prev_text);
-
-      pageLinkElm.appendChild(prev);
-
-      Event.observe(prev, 'click', this.changePage.bind(this, pageNo - 1), false);
+      this.createPageAnchor(pageLinkElm, this.pagePrevName, pageNo - 1);
     }
     if (next_page) {
       if (prev_page) {
-        var sep = document.createTextNode(' | ');
-        pageLinkElm.appendChild(sep);
+        pageLinkElm.appendChild(document.createTextNode(' | '));
       }
 
-      var next = document.createElement('a');
-      next.setAttribute('href', 'javascript:void(0)');
-      var next_text = document.createTextNode(this.pageNextName);
-      next.appendChild(next_text);
-
-      pageLinkElm.appendChild(next);
-
-      Event.observe(next, 'click', this.changePage.bind(this, pageNo + 1), false);
+      this.createPageAnchor(pageLinkElm, this.pageNextName, pageNo + 1);
     }
+  },
+
+  createPageAnchor: function(parent, text, page) {
+
+    var a = parent.appendChild(document.createElement('a'));
+    a.setAttribute('href', 'javascript:void(0)');
+    a.appendChild(document.createTextNode(text));
+
+    IncSearch._addEvent(a, 'click', this._bind(this.changePage, page));
   },
 
   getPageCount: function() {
@@ -233,16 +209,16 @@ IncSearch.ViewBase.prototype = {
 
   hotkey: function(event) {
     if (event.ctrlKey) {
-      if (event.keyCode == Event.KEY_RIGHT) {
+      if (event.keyCode == 39) { // key right
         if (this.nowPage < this.getPageCount()) {
           this.changePage(this.nowPage + 1);
         }
-        Event.stop(event);
-      } else if (event.keyCode == Event.KEY_LEFT) {
+        IncSearch._stopEvent(event);
+      } else if (event.keyCode == 37) { // key reft
         if (this.nowPage > 1) {
           this.changePage(this.nowPage - 1);
         }
-        Event.stop(event);
+        IncSearch._stopEvent(event);
       }
     }
   },
@@ -275,11 +251,9 @@ IncSearch.ViewBase.prototype = {
   search: function(patternList) {
     patternList = patternList || this.oldInput;
 
-    this.matchList = new Array();
+    this.matchList = [];
 
-    var length = this.searchValues.length;
-
-    for (var i = 0; i < length; i++) {
+    for (var i = 0, len = this.searchValues.length; i < len; i++) {
       if (this.isMatch(this.searchValues[i], patternList)) {
         this.matchList.push(i);
       }
@@ -298,19 +272,19 @@ IncSearch.ViewBase.prototype = {
 
   createText: function(value, patternList) {
 
-    var textList = new Array();
+    var textList = [];
 
     if (this.highlight) {
 
       var first = this.getFirstMatch(value, patternList);
 
       while (first.listIndex != -1) {
-        textList.push(this.escapeHTML(value.substr(0, first.matchIndex)));
+        textList.push(this._escapeHTML(value.substr(0, first.matchIndex)));
         textList.push('<strong class="');
         textList.push(this.highClassName);
         textList.push((first.listIndex % this.highClassNum) + 1);
         textList.push('">');
-        textList.push(this.escapeHTML(value.substr(first.matchIndex, patternList[first.listIndex].length)));
+        textList.push(this._escapeHTML(value.substr(first.matchIndex, patternList[first.listIndex].length)));
         textList.push('</strong>');
 
         value = value.substr(first.matchIndex + patternList[first.listIndex].length);
@@ -318,7 +292,7 @@ IncSearch.ViewBase.prototype = {
       }
     }
 
-    textList.push(this.escapeHTML(value));
+    textList.push(this._escapeHTML(value));
 
     return textList.join('');
   },
@@ -338,7 +312,7 @@ IncSearch.ViewBase.prototype = {
     first.listIndex = -1;
     first.matchIndex = value.length;
 
-    for (var i = 0; i < patternList.length; i++) {
+    for (var i = 0, len = patternList.length; i < len; i++) {
       var index = this.matchIndex(value, patternList[i]);
       if (index != -1 && index < first.matchIndex) {
         first.listIndex = i;
@@ -351,17 +325,34 @@ IncSearch.ViewBase.prototype = {
 
   getInput: function() {
 
-    if (this.delim) {
-      var list = this.input.value.split(this.delim);
-      return list.select(function(value) {
-        return value != undefined && value != null && value != '';
-      });
+    var value = this.input.value;
+
+    if (!value) {
+      return [];
+    } else if (this.delim) {
+      var list = value.split(this.delim);
+      var inputs = [];
+      for (var i = 0, len = list.length; i < len; i++) {
+        if (list[i]) inputs.push(list[i]);
+      }
+      return inputs;
     } else {
-      return new Array(this.input.value);
+      return [value];
     }
   },
 
-  escapeHTML: function(value) {
+  // Utils
+  _bind: function(func) {
+    var self = this;
+    var args = Array.prototype.slice.call(arguments, 1);
+    return function(){ func.apply(self, args); };
+  },
+  _bindEvent: function(func) {
+    var self = this;
+    var args = Array.prototype.slice.call(arguments, 1);
+    return function(event){ event = event || window.event; func.apply(self, [event].concat(args)); };
+  },
+  _escapeHTML: function(value) {
     if (this.escape) {
       return value.replace(/\&/g, '&amp;').replace( /</g, '&lt;').replace(/>/g, '&gt;')
                 .replace(/\"/g, '&quot;').replace(/\'/g, '&#39;').replace(/\n|\r\n/g, '<br />');
@@ -373,147 +364,137 @@ IncSearch.ViewBase.prototype = {
 }
 
 /*-- IncSearch.ViewList -------------------------------*/
-IncSearch.ViewList = Class.create();
-Object.extend(Object.extend(IncSearch.ViewList.prototype, IncSearch.ViewBase.prototype), {
+IncSearch.ViewList =  function() {
+  this.initialize.apply(this, arguments);
+};
+IncSearch._copyProperties(IncSearch.ViewList.prototype, IncSearch.ViewBase.prototype);
 
-  // options
-  listTagName: 'div',
+IncSearch.ViewList.prototype.listTagName = 'div';
 
-  setOptions: function(options) {
-    this.setBaseOptions(options);
+IncSearch.ViewList.prototype.isMatch = function(value, patternList) {
 
-    if (options.listTagName)
-      this.listTagName = options.listTagName;
-  },
-
-  isMatch: function(value, patternList) {
-
-    for (var i = 0; i < patternList.length; i++) {
-      if (this.matchIndex(value, patternList[i]) == -1) {
-        return false;
-      }
+  for (var i = 0, len = patternList.length; i < len; i++) {
+    if (this.matchIndex(value, patternList[i]) == -1) {
+      return false;
     }
-    return true;
-  },
-
-  createLineElement: function(index, patternList) {
-    return this.createElement(this.searchValues[index], patternList, this.listTagName);
   }
-});
+  return true;
+};
+
+IncSearch.ViewList.prototype.createLineElement = function(index, patternList) {
+  return this.createElement(this.searchValues[index], patternList, this.listTagName);
+};
 
 /*-- IncSearch.ViewTable -------------------------------*/
-IncSearch.ViewTable = Class.create();
-Object.extend(Object.extend(IncSearch.ViewTable.prototype, IncSearch.ViewBase.prototype), {
+IncSearch.ViewTable =  function() {
+  this.initialize.apply(this, arguments);
+};
+IncSearch._copyProperties(IncSearch.ViewTable.prototype, IncSearch.ViewBase.prototype);
 
-  setOptions: function(options) {
+IncSearch.ViewTable.prototype.startElementText = '<table>';
+IncSearch.ViewTable.prototype.endElementText = '</table>';
 
-    this.setBaseOptions(Object.extend({
-      startElementText: '<table>',
-      endElementText: '</table>'
-    }, options));
-  },
+IncSearch.ViewTable.prototype.isMatch = function(valueArray, patternList) {
 
-  isMatch: function(valueArray, patternList) {
+  var value = valueArray.join("\n");
 
-    var value = valueArray.join("\n");
-
-    for (var i = 0; i < patternList.length; i++) {
-      if (this.matchIndex(value, patternList[i]) == -1) {
-        return false;
-      }
+  for (var i = 0, len = patternList.length; i < len; i++) {
+    if (this.matchIndex(value, patternList[i]) == -1) {
+      return false;
     }
-    return true;
-  },
-
-  createLineElement: function(index, patternList) {
-
-    var text = '<tr>';
-    for (var i = 0; i < this.searchValues[index].length; i++) {
-      text += this.createElement(this.searchValues[index][i], patternList, 'td');
-    }
-
-    text += '</tr>';
-    return text;
   }
-});
+  return true;
+};
+
+IncSearch.ViewTable.prototype.createLineElement = function(index, patternList) {
+
+  var text = '<tr>';
+  for (var i = 0, len = this.searchValues[index].length; i < len; i++) {
+    text += this.createElement(this.searchValues[index][i], patternList, 'td');
+  }
+
+  text += '</tr>';
+  return text;
+};
 
 /*-- IncSearch.ViewBookmark -------------------------------*/
-IncSearch.ViewBookmark = Class.create();
-Object.extend(Object.extend(IncSearch.ViewBookmark.prototype, IncSearch.ViewTable.prototype), {
+IncSearch.ViewBookmark =  function() {
+  this.initialize.apply(this, arguments);
+};
+IncSearch._copyProperties(IncSearch.ViewBookmark.prototype, IncSearch.ViewTable.prototype);
 
-  setOptions: function(options) {
+IncSearch.ViewBookmark.prototype.isMatch = function(post, patternList) {
 
-    (IncSearch.ViewTable.prototype.setOptions).apply(this, [options]);
+  var value = this.createValue(post);
 
-    if (options.tagBracket != undefined)
-      this.tagBracket = options.tagBracket;
-  },
-
-  isMatch: function(post, patternList) {
-
-    var value = this.createValue(post);
-
-    for (var i = 0; i < patternList.length; i++) {
-      if (this.matchIndex(value, patternList[i]) == -1) {
-        return false;
-      }
+  for (var i = 0, len = patternList.length; i < len; i++) {
+    if (this.matchIndex(value, patternList[i]) == -1) {
+      return false;
     }
-    return true;
-  },
-
-  createLineElement: function(index, patternList) {
-
-    var post = this.searchValues[index];
-
-    var text = '<tr><td>';
-
-    // url, title
-    text += this.createTitleElement(post, patternList);
-
-    // info
-    if (post.info) {
-      text += this.createElement(post.info, patternList, 'p');
-    }
-    text += '</td>';
-
-    // tags
-    if (post.tags) {
-      text += this.createElement(this.tagsString(post.tags), patternList, 'td');
-    }
-
-    // others
-    text += this.createOthersElement(post, patternList);
-    text += '</tr>';
-
-    return text;
-  },
-
-  tagsString: function(tags, sep) {
-    sep = sep || ' ';
-    if (this.tagBracket && tags.length != 0) {
-      return '[' + tags.join(']' + sep + '[') + ']';
-    } else {
-      return tags.join(sep);
-    }
-  },
-  createValue: function(post) {
-    return post.title + "\n" + post.info + "\n" + this.tagsString(post.tags, '\n') + "\n" + post.others.join("\n");
-  },
-  createTitleElement: function(post, patternList) {
-    var text = '<a href="' +  post.url + '"';
-    text += " onclick=\"window.open('" + post.url + "'); return false;\"";
-    text += " onkeypress=\"var event = event || window.event; if (event.keyCode == Event.KEY_RETURN) {window.open('" + post.url + "'); return false;}\">";
-    text += this.createText(post.title, patternList);
-    text += '</a><br />';
-
-    return text;
-  },
-  createOthersElement: function(post, patternList) {
-    var text = '';
-    for (var i = 0; i < post.others.length; i++) {
-      text += this.createElement(post.others[i], patternList, 'td');
-    }
-
-    return text;
   }
-});
+  return true;
+};
+
+IncSearch.ViewBookmark.prototype.createLineElement = function(index, patternList) {
+
+  var post = this.searchValues[index];
+
+  var text = '<tr><td>';
+
+  // url, title
+  text += this.createTitleElement(post, patternList);
+
+  // info
+  if (post.info) {
+    text += this.createElement(post.info, patternList, 'p');
+  }
+  text += '</td>';
+
+  // tags
+  if (post.tags) {
+    text += this.createElement(this.tagsString(post.tags), patternList, 'td');
+  }
+
+  // others
+  text += this.createOthersElement(post, patternList);
+  text += '</tr>';
+
+  return text;
+};
+
+IncSearch.ViewBookmark.prototype.tagsString = function(tags, sep) {
+
+  if (typeof(tags) == 'string') return tags;
+
+  sep = sep || ' ';
+  if (this.tagBracket && tags.length != 0) {
+    return '[' + tags.join(']' + sep + '[') + ']';
+  } else {
+    return tags.join(sep);
+  }
+};
+
+IncSearch.ViewBookmark.prototype.createValue = function(post) {
+  return post.title + "\n" + post.info + "\n" + this.tagsString(post.tags, '\n') + "\n" + post.others.join("\n");
+};
+
+IncSearch.ViewBookmark.prototype.createTitleElement = function(post, patternList) {
+  var text = '<a href="' +  post.url + '"';
+  if (this.target) {
+    text += ' target="' + this.target + '" ';
+  }
+  text += '>';
+  text += this.createText(post.title, patternList);
+  text += '</a><br />';
+
+  return text;
+};
+
+IncSearch.ViewBookmark.prototype.createOthersElement = function(post, patternList) {
+  var text = '';
+  for (var i = 0, len = post.others.length; i < len; i++) {
+    text += this.createElement(post.others[i], patternList, 'td');
+  }
+
+  return text;
+};
