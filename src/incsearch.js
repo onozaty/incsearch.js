@@ -19,6 +19,8 @@ For details, see the web site:
 --------------------------------------------------------
 ver 0.1 2006/03/13
   ・公開
+ver 0.2 2006/03/19
+  ・ブックマーク表示用として、IncSearch.ViewBookmarkを追加
 --------------------------------------------------------
 */
 
@@ -153,32 +155,38 @@ IncSearch.ViewBase.prototype = {
 
   createElement: function(value, patternList, tagName) {
 
-    var temp = new Array();
+    var elementHTML = '<' + tagName + '>';
+    elementHTML += this.createText(value, patternList);
+    elementHTML += '</' + tagName + '>';
 
-    temp.push('<' + tagName + '>');
+    return elementHTML;
+  },
+
+  createText: function(value, patternList) {
+
+    var textList = new Array();
 
     if (this.highlight) {
 
       var first = this.getFirstMatch(value, patternList);
 
       while (first.listIndex != -1) {
-        temp.push(this.escapeHTML(value.substr(0, first.matchIndex)));
-        temp.push('<strong class="');
-        temp.push(this.highClassName);
-        temp.push((first.listIndex % this.highClassNum) + 1);
-        temp.push('">');
-        temp.push(this.escapeHTML(value.substr(first.matchIndex, patternList[first.listIndex].length)));
-        temp.push('</strong>');
+        textList.push(this.escapeHTML(value.substr(0, first.matchIndex)));
+        textList.push('<strong class="');
+        textList.push(this.highClassName);
+        textList.push((first.listIndex % this.highClassNum) + 1);
+        textList.push('">');
+        textList.push(this.escapeHTML(value.substr(first.matchIndex, patternList[first.listIndex].length)));
+        textList.push('</strong>');
 
         value = value.substr(first.matchIndex + patternList[first.listIndex].length);
         first = this.getFirstMatch(value, patternList);
       }
     }
 
-    temp.push(this.escapeHTML(value));
-    temp.push('</' + tagName + '>');
+    textList.push(this.escapeHTML(value));
 
-    return temp.join('');
+    return textList.join('');
   },
 
   matchIndex: function(value, pattern) {
@@ -291,6 +299,56 @@ Object.extend(Object.extend(IncSearch.ViewTable.prototype, IncSearch.ViewBase.pr
     }
 
     text += '</tr>';
+    return text;
+  }
+});
+
+/*-- IncSearch.ViewBookmark -------------------------------*/
+IncSearch.ViewBookmark = Class.create();
+Object.extend(Object.extend(IncSearch.ViewBookmark.prototype, IncSearch.ViewTable.prototype), {
+
+  isMatch: function(post, patternList) {
+
+    var value = post.title + "\n" + post.info + "\n" + post.tags.join("\n") + "\n" + post.others.join("\n");
+
+    for (var i = 0; i < patternList.length; i++) {
+      if (this.matchIndex(value, patternList[i]) == -1) {
+        return false;
+      }
+    }
+    return true;
+  },
+
+  createLineElement: function(index, patternList) {
+
+    var post = this.searchValues[index];
+
+    var text = '<tr><td>';
+
+    // url, title
+    text += '<a href="' +  post.url + '"';
+    text += " onclick=\"window.open('" + post.url + "'); return false;\"";
+    text += " onkeypress=\"window.open('" + post.url + "'); return false;\">";
+    text += this.createText(post.title, patternList);
+    text += '</a><br />';
+
+    // info
+    if (post.info) {
+      text += this.createElement(post.info, patternList, 'p');
+    }
+    text += '</td>';
+
+    // tags
+    if (post.tags) {
+      text += this.createElement(post.tags.join(' '), patternList, 'td');
+    }
+
+    // others
+    for (var i = 0; i < post.others.length; i++) {
+      text += this.createElement(post.others[i], patternList, 'td');
+    }
+    text += '</tr>';
+
     return text;
   }
 });
