@@ -1,30 +1,18 @@
 /*
 --------------------------------------------------------
 incsearch.js - Incremental Search
-インクリメンタルサーチライブラリ
+Version 1.0.0 (Update 2006/09/18)
 
 - onozaty (http://www.enjoyxstudy.com)
 
 Released under the Creative Commons License(Attribution 2.1 Japan):
-クリエイティブ・コモンズの帰属 2.1 Japanライセンスの下でライセンスされています。
  http://creativecommons.org/licenses/by/2.1/jp/
 
 depends on prototype.js(http://prototype.conio.net/)
-本ライブラリの使用にあたっては、prototype.jsが必要です。
 
 For details, see the web site:
-使用方法については、下記を参照してください。
  http://www.enjoyxstudy.com/javascript/incsearch
 
---------------------------------------------------------
-ver 0.1 2006/03/13
-  ・公開
-ver 0.2 2006/03/19
-  ・ブックマーク表示用として、IncSearch.ViewBookmarkを追加
-ver 0.3 2006/05/05
-  ・ページ遷移に対応
-ver 0.4 2006/05/15
-  ・ホットキーを追加
 --------------------------------------------------------
 */
 
