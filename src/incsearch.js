@@ -1,7 +1,7 @@
 /*
 --------------------------------------------------------
 incsearch.js - Incremental Search
-Version 1.1.1 (Update 2006/11/30)
+Version 1.2.0 (Update 2007/01/28)
 
 - onozaty (http://www.enjoyxstudy.com)
 
@@ -28,7 +28,7 @@ IncSearch.ViewBase.prototype = {
     this.viewArea = $(viewArea);
     this.searchValues = searchValues;
 
-    this.timer = null;
+    this.checkLoopTimer = null;
     this.oldInput = null;
     this.matchList = null;
     this.setOptions(arguments[3] || {});
@@ -41,6 +41,7 @@ IncSearch.ViewBase.prototype = {
 
   // options
   interval: 500,
+  delay: 0,
   dispMax: 20,
   initDispNon: false,
   ignoreCase: true,
@@ -56,6 +57,9 @@ IncSearch.ViewBase.prototype = {
 
     if (options.interval != undefined)
       this.interval = options.interval;
+
+    if (options.delay != undefined)
+      this.delay = options.delay;
 
     if (options.initDispNon != undefined)
       this.initDispNon = options.initDispNon;
@@ -118,27 +122,35 @@ IncSearch.ViewBase.prototype = {
   },
 
   checkLoop: function() {
-    this.check();
-    if (this.timer) clearTimeout(this.timer);
-    this.timer = setTimeout(this.checkLoop.bind(this), this.interval);
+    var input = this.getInput();
+    if (this.isChange(input)) {
+      this.oldInput = input;
+      if (this.delay == 0) {
+        this.startSearch(input);
+      } else {
+        if (this.startSearchTimer) clearTimeout(this.startSearchTimer);
+        this.startSearchTimer = setTimeout(this.startSearch.bind(this, input), this.delay);
+      }
+    }
+    if (this.checkLoopTimer) clearTimeout(this.checkLoopTimer);
+    this.checkLoopTimer = setTimeout(this.checkLoop.bind(this), this.interval);
   },
 
-  check: function() {
-    var input = this.getInput();
-    if (!this.oldInput ||
-       (input.join(this.delim || '') != this.oldInput.join(this.delim || ''))) {
-      this.oldInput = input;
+  isChange: function(input) {
+    return !this.oldInput ||
+       (input.join(this.delim || '') != this.oldInput.join(this.delim || ''));
+  },
 
-      // init
-      this.clearViewArea();
-      if (!this.initDispNon || input.length != 0) {
-        if (this.searchBefore) this.searchBefore();
-        this.search(input);
-        this.nowPage = 1;
-        this.createViewArea(0, this.dispMax, input);
-        if (this.pageLink) this.createPageLink(1, this.pageLink);
-        if (this.searchAfter) this.searchAfter();
-      }
+  startSearch: function(input) {
+    // init
+    this.clearViewArea();
+    if (!this.initDispNon || input.length != 0) {
+      if (this.searchBefore) this.searchBefore();
+      this.search(input);
+      this.nowPage = 1;
+      this.createViewArea(0, this.dispMax, input);
+      if (this.pageLink) this.createPageLink(1, this.pageLink);
+      if (this.searchAfter) this.searchAfter();
     }
   },
 
