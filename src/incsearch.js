@@ -1,26 +1,28 @@
 /*
 --------------------------------------------------------
 incsearch.js - Incremental Search
-ƒCƒ“ƒNƒŠƒƒ“ƒ^ƒ‹ƒT[ƒ`ƒ‰ƒCƒuƒ‰ƒŠ
+ã‚¤ãƒ³ã‚¯ãƒªãƒ¡ãƒ³ã‚¿ãƒ«ã‚µãƒ¼ãƒãƒ©ã‚¤ãƒ–ãƒ©ãƒª
 
 - onozaty (http://www.enjoyxstudy.com)
 
 Released under the Creative Commons License(Attribution 2.1 Japan):
-ƒNƒŠƒGƒCƒeƒBƒuEƒRƒ‚ƒ“ƒY‚Ì‹A‘® 2.1 Japanƒ‰ƒCƒZƒ“ƒX‚Ì‰º‚Åƒ‰ƒCƒZƒ“ƒX‚³‚ê‚Ä‚¢‚Ü‚·B
+ã‚¯ãƒªã‚¨ã‚¤ãƒ†ã‚£ãƒ–ãƒ»ã‚³ãƒ¢ãƒ³ã‚ºã®å¸°å±ž 2.1 Japanãƒ©ã‚¤ã‚»ãƒ³ã‚¹ã®ä¸‹ã§ãƒ©ã‚¤ã‚»ãƒ³ã‚¹ã•ã‚Œã¦ã„ã¾ã™ã€‚
  http://creativecommons.org/licenses/by/2.1/jp/
 
 depends on prototype.js(http://prototype.conio.net/)
-–{ƒ‰ƒCƒuƒ‰ƒŠ‚ÌŽg—p‚É‚ ‚½‚Á‚Ä‚ÍAprototype.js‚ª•K—v‚Å‚·B
+æœ¬ãƒ©ã‚¤ãƒ–ãƒ©ãƒªã®ä½¿ç”¨ã«ã‚ãŸã£ã¦ã¯ã€prototype.jsãŒå¿…è¦ã§ã™ã€‚
 
 For details, see the web site:
-Žg—p•û–@‚É‚Â‚¢‚Ä‚ÍA‰º‹L‚ðŽQÆ‚µ‚Ä‚­‚¾‚³‚¢B
+ä½¿ç”¨æ–¹æ³•ã«ã¤ã„ã¦ã¯ã€ä¸‹è¨˜ã‚’å‚ç…§ã—ã¦ãã ã•ã„ã€‚
  http://www.enjoyxstudy.com/javascript/incsearch
 
 --------------------------------------------------------
 ver 0.1 2006/03/13
-  EŒöŠJ
+  ãƒ»å…¬é–‹
 ver 0.2 2006/03/19
-  EƒuƒbƒNƒ}[ƒN•\Ž¦—p‚Æ‚µ‚ÄAIncSearch.ViewBookmark‚ð’Ç‰Á
+  ãƒ»ãƒ–ãƒƒã‚¯ãƒžãƒ¼ã‚¯è¡¨ç¤ºç”¨ã¨ã—ã¦ã€IncSearch.ViewBookmarkã‚’è¿½åŠ 
+ver 0.3 2006/05/05
+  ãƒ»ãƒšãƒ¼ã‚¸é·ç§»ã«å¯¾å¿œ
 --------------------------------------------------------
 */
 
@@ -37,15 +39,12 @@ IncSearch.ViewBase.prototype = {
     this.searchValues = searchValues;
 
     this.timer = null;
-
     this.oldInput = null;
-
+    this.matchList = null;
     this.setOptions(arguments[3] || {});
 
-    // reg event
-    Event.observe(this.input, 'focus', this.checkLoop.bindAsEventListener(this), false);
-
-    this.check();
+    // check loop start
+    this.checkLoop();
   },
 
   // options
@@ -58,29 +57,19 @@ IncSearch.ViewBase.prototype = {
   highClassNum: 4,
   delim: ' ',
   escape: false,
+  pagePrevName: 'prev',
+  pageNextName: 'next',
 
   setBaseOptions: function(options) {
 
-    if (options.interval)
+    if (options.interval != undefined)
       this.interval = options.interval;
 
-    if (options.initDispNon)
+    if (options.initDispNon != undefined)
       this.initDispNon = options.initDispNon;
 
-    if (options.dispMax)
+    if (options.dispMax != undefined)
       this.dispMax = options.dispMax;
-
-    if (options.startElementText)
-      this.startElementText = options.startElementText;
-
-    if (options.endElementText)
-      this.endElementText = options.endElementText;
-
-    if (options.searchBefore)
-      this.searchBefore = options.searchBefore;
-
-    if (options.searchAfter)
-      this.searchAfter = options.searchAfter;
 
     if (options.ignoreCase != undefined)
       this.ignoreCase = options.ignoreCase;
@@ -99,6 +88,33 @@ IncSearch.ViewBase.prototype = {
 
     if (options.escape != undefined)
       this.escape = options.escape;
+
+    if (options.startElementText != undefined)
+      this.startElementText = options.startElementText;
+
+    if (options.endElementText != undefined)
+      this.endElementText = options.endElementText;
+
+    if (options.searchBefore != undefined)
+      this.searchBefore = options.searchBefore;
+
+    if (options.searchAfter != undefined)
+      this.searchAfter = options.searchAfter;
+
+    if (options.pageLink != undefined)
+      this.pageLink = options.pageLink;
+
+    if (options.pagePrevName != undefined)
+      this.pagePrevName = options.pagePrevName;
+
+    if (options.pageNextName != undefined)
+      this.pageNextName = options.pageNextName;
+
+    if (options.changePageAfter != undefined)
+      this.changePageAfter = options.changePageAfter;
+
+    if (options.changePageAfter != undefined)
+      this.changePageAfter = options.changePageAfter;
   },
 
   checkLoop: function() {
@@ -117,31 +133,100 @@ IncSearch.ViewBase.prototype = {
       this.clearViewArea();
       if (!this.initDispNon || input.length != 0) {
         if (this.searchBefore) this.searchBefore();
-        var matchCount = this.search(1, this.dispMax, input);
-        if (this.searchAfter) this.searchAfter(matchCount);
+        this.search(input);
+        this.createViewArea(0, this.dispMax, input);
+        if (this.pageLink) this.createPageLink(1, this.pageLink);
+        if (this.searchAfter) this.searchAfter();
       }
     }
   },
 
-  clearViewArea: function() {
-    this.viewArea.innerHTML = '';
+  changePage: function(pageNo) {
+    var start = (pageNo - 1) * this.dispMax;
+
+    if (!this.matchList || start >= this.matchList.length) return false;
+
+    if (this.changePageBefore) this.changePageBefore(pageNo);
+    this.createViewArea(start, this.dispMax, this.oldInput);
+    if (this.pageLink) this.createPageLink(pageNo, this.pageLink);
+    if (this.changePageAfter) this.changePageAfter(pageNo);
+    return true;
   },
 
-  search: function(dispStart, dispEnd, patternList) {
-    patternList = patternList || this.oldInput;
+  createPageLink: function(pageNo, pageLinkElm) {
 
-    var elementText = '';
-    var matchCount = 0;
+    pageLinkElm = $(pageLinkElm);
 
-    for (var i = 0; i < this.searchValues.length; i++) {
-      if (this.isMatch(this.searchValues[i], patternList)) {
-        matchCount++;
+    var pageCount = this.getPageCount();
 
-        if (dispEnd == 0 ||
-           (matchCount >= dispStart && matchCount <= dispEnd)) {
-          elementText += this.createLineElement(i, patternList);
-        }
+    var prev_page = false;
+    var next_page = false;
+
+    if (pageCount > 1) {
+
+      if (pageNo == 1) {
+        next_page = true;
+      } else if (pageNo == pageCount) {
+        prev_page = true;
+      } else {
+        next_page = true;
+        prev_page = true;
       }
+    }
+
+    pageLinkElm.innerHTML = '';
+
+    if (prev_page) {
+
+      var prev = document.createElement('a');
+      prev.setAttribute('href', 'javascript:void(0)');
+      var prev_text = document.createTextNode(this.pagePrevName);
+      prev.appendChild(prev_text);
+
+      pageLinkElm.appendChild(prev);
+
+      Event.observe(prev, 'click', this.changePage.bind(this, pageNo - 1), false);
+    }
+    if (next_page) {
+      if (prev_page) {
+        var sep = document.createTextNode(' | ');
+        pageLinkElm.appendChild(sep);
+      }
+
+      var next = document.createElement('a');
+      next.setAttribute('href', 'javascript:void(0)');
+      var next_text = document.createTextNode(this.pageNextName);
+      next.appendChild(next_text);
+
+      pageLinkElm.appendChild(next);
+
+      Event.observe(next, 'click', this.changePage.bind(this, pageNo + 1), false);
+    }
+  },
+
+  getPageCount: function() {
+    var pageCount = 0;
+
+    if (this.matchList && this.matchList.length != 0) {
+      if (this.dispMax == 0) {
+        pageCount = 1;
+      } else {
+        pageCount = Math.floor((this.matchList.length + this.dispMax - 1) / this.dispMax);
+      }
+    }
+    return pageCount;
+  },
+
+  createViewArea: function(start, count, patternList) {
+    var elementText = '';
+
+    var end = this.matchList.length;
+    if (count != 0 && end > (start + count)) {
+      end = start + count;
+    }
+
+    for (var i = start; i < end; i++) {
+      elementText += this.createLineElement(this.matchList[i], patternList);
     }
 
     if (elementText != '') {
@@ -149,8 +234,26 @@ IncSearch.ViewBase.prototype = {
       if (this.endElementText) elementText += this.endElementText;
       this.viewArea.innerHTML = elementText;
     }
+  },
 
-    return matchCount;
+  clearViewArea: function() {
+    this.viewArea.innerHTML = '';
+    this.matchList = null;
+  },
+
+  search: function(patternList) {
+    patternList = patternList || this.oldInput;
+
+    this.matchList = new Array();
+
+    var length = this.searchValues.length;
+
+    for (var i = 0; i < length; i++) {
+      if (this.isMatch(this.searchValues[i], patternList)) {
+        this.matchList.push(i);
+      }
+    }
+    return this.matchList.length;
   },
 
   createElement: function(value, patternList, tagName) {
@@ -328,7 +431,7 @@ Object.extend(Object.extend(IncSearch.ViewBookmark.prototype, IncSearch.ViewTabl
     // url, title
     text += '<a href="' +  post.url + '"';
     text += " onclick=\"window.open('" + post.url + "'); return false;\"";
-    text += " onkeypress=\"window.open('" + post.url + "'); return false;\">";
+    text += " onkeypress=\"var event = event || window.event; if (event.keyCode == Event.KEY_RETURN) {window.open('" + post.url + "'); return false;}\">";
     text += this.createText(post.title, patternList);
     text += '</a><br />';
 
