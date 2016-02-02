@@ -23,6 +23,8 @@ ver 0.2 2006/03/19
   ・ブックマーク表示用として、IncSearch.ViewBookmarkを追加
 ver 0.3 2006/05/05
   ・ページ遷移に対応
+ver 0.4 2006/05/15
+  ・ホットキーを追加
 --------------------------------------------------------
 */
 
@@ -42,6 +44,8 @@ IncSearch.ViewBase.prototype = {
     this.oldInput = null;
     this.matchList = null;
     this.setOptions(arguments[3] || {});
+
+    this.nowPage = 0;
 
     // check loop start
     this.checkLoop();
@@ -115,6 +119,14 @@ IncSearch.ViewBase.prototype = {
 
     if (options.changePageAfter != undefined)
       this.changePageAfter = options.changePageAfter;
+
+    if (options.hotkey != undefined) {
+      if (window.opera) {
+        Event._observeAndCache($(options.hotkey), 'keypress', this.hotkey.bindAsEventListener(this), false);
+      } else {
+        Event.observe($(options.hotkey), 'keypress', this.hotkey.bindAsEventListener(this), false);
+      }
+    }
   },
 
   checkLoop: function() {
@@ -134,6 +146,7 @@ IncSearch.ViewBase.prototype = {
       if (!this.initDispNon || input.length != 0) {
         if (this.searchBefore) this.searchBefore();
         this.search(input);
+        this.nowPage = 1;
         this.createViewArea(0, this.dispMax, input);
         if (this.pageLink) this.createPageLink(1, this.pageLink);
         if (this.searchAfter) this.searchAfter();
@@ -148,6 +161,7 @@ IncSearch.ViewBase.prototype = {
 
     if (this.changePageBefore) this.changePageBefore(pageNo);
     this.createViewArea(start, this.dispMax, this.oldInput);
+    this.nowPage = pageNo;
     if (this.pageLink) this.createPageLink(pageNo, this.pageLink);
     if (this.changePageAfter) this.changePageAfter(pageNo);
     return true;
@@ -217,6 +231,22 @@ IncSearch.ViewBase.prototype = {
     return pageCount;
   },
 
+  hotkey: function(event) {
+    if (event.ctrlKey) {
+      if (event.keyCode == Event.KEY_RIGHT) {
+        if (this.nowPage < this.getPageCount()) {
+          this.changePage(this.nowPage + 1);
+        }
+        Event.stop(event);
+      } else if (event.keyCode == Event.KEY_LEFT) {
+        if (this.nowPage > 1) {
+          this.changePage(this.nowPage - 1);
+        }
+        Event.stop(event);
+      }
+    }
+  },
+
   createViewArea: function(start, count, patternList) {
     var elementText = '';
 
@@ -239,6 +269,7 @@ IncSearch.ViewBase.prototype = {
   clearViewArea: function() {
     this.viewArea.innerHTML = '';
     this.matchList = null;
+    this.nowPage = 1;
   },
 
   search: function(patternList) {
