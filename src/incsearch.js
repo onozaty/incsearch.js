@@ -1,7 +1,7 @@
 /*
 --------------------------------------------------------
 incsearch.js - Incremental Search
-Version 1.1.0 (Update 2006/11/02)
+Version 1.1.1 (Update 2006/11/30)
 
 - onozaty (http://www.enjoyxstudy.com)
 
@@ -439,7 +439,7 @@ Object.extend(Object.extend(IncSearch.ViewBookmark.prototype, IncSearch.ViewTabl
 
   isMatch: function(post, patternList) {
 
-    var value = post.title + "\n" + post.info + "\n" + this.tagsString(post.tags, '\n') + "\n" + post.others.join("\n");
+    var value = this.createValue(post);
 
     for (var i = 0; i < patternList.length; i++) {
       if (this.matchIndex(value, patternList[i]) == -1) {
@@ -456,11 +456,7 @@ Object.extend(Object.extend(IncSearch.ViewBookmark.prototype, IncSearch.ViewTabl
     var text = '<tr><td>';
 
     // url, title
-    text += '<a href="' +  post.url + '"';
-    text += " onclick=\"window.open('" + post.url + "'); return false;\"";
-    text += " onkeypress=\"var event = event || window.event; if (event.keyCode == Event.KEY_RETURN) {window.open('" + post.url + "'); return false;}\">";
-    text += this.createText(post.title, patternList);
-    text += '</a><br />';
+    text += this.createTitleElement(post, patternList);
 
     // info
     if (post.info) {
@@ -474,9 +470,7 @@ Object.extend(Object.extend(IncSearch.ViewBookmark.prototype, IncSearch.ViewTabl
     }
 
     // others
-    for (var i = 0; i < post.others.length; i++) {
-      text += this.createElement(post.others[i], patternList, 'td');
-    }
+    text += this.createOthersElement(post, patternList);
     text += '</tr>';
 
     return text;
@@ -489,5 +483,25 @@ Object.extend(Object.extend(IncSearch.ViewBookmark.prototype, IncSearch.ViewTabl
     } else {
       return tags.join(sep);
     }
+  },
+  createValue: function(post) {
+    return post.title + "\n" + post.info + "\n" + this.tagsString(post.tags, '\n') + "\n" + post.others.join("\n");
+  },
+  createTitleElement: function(post, patternList) {
+    var text = '<a href="' +  post.url + '"';
+    text += " onclick=\"window.open('" + post.url + "'); return false;\"";
+    text += " onkeypress=\"var event = event || window.event; if (event.keyCode == Event.KEY_RETURN) {window.open('" + post.url + "'); return false;}\">";
+    text += this.createText(post.title, patternList);
+    text += '</a><br />';
+
+    return text;
+  },
+  createOthersElement: function(post, patternList) {
+    var text = '';
+    for (var i = 0; i < post.others.length; i++) {
+      text += this.createElement(post.others[i], patternList, 'td');
+    }
+
+    return text;
   }
 });
